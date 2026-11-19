@@ -47,7 +47,26 @@ jobs:
           SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
-        run: gradle :app:assembleRelease --no-daemon --stacktrace
+        run: gradle :app:assembleRelease --no-daemon --stacktrace 2>&1 | tee build.log
+
+      # Se qualcosa va storto, gli errori compaiono in un riquadro nella pagina di riepilogo.
+      - name: Riepilogo errori
+        if: failure()
+        run: |
+          {
+            echo "## Errori di compilazione"
+            echo ""
+            echo '```'
+            grep -E '^e: |^w: .*error|What went wrong|Could not resolve|> ' build.log | grep -v '^w: ' | head -n 120 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Carica il log completo
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
 
       - name: Elimina la chiave
         if: always()
