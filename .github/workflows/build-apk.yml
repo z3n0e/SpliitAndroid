@@ -47,17 +47,24 @@ jobs:
           SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        # "shell: bash" attiva pipefail: se Gradle fallisce, fallisce anche il passaggio.
+        shell: bash
         run: gradle :app:assembleRelease --no-daemon --stacktrace 2>&1 | tee build.log
 
-      # Se qualcosa va storto, gli errori compaiono in un riquadro nella pagina di riepilogo.
+      # Se qualcosa va storto, gli errori compaiono in cima alla pagina dell'esecuzione
+      # (sezione "Annotations") e in un riquadro nel riepilogo.
       - name: Riepilogo errori
         if: failure()
+        shell: bash
         run: |
+          grep -E '^e: ' build.log | head -n 40 | while IFS= read -r line; do
+            echo "::error::${line#e: }"
+          done
           {
             echo "## Errori di compilazione"
             echo ""
             echo '```'
-            grep -E '^e: |^w: .*error|What went wrong|Could not resolve|> ' build.log | grep -v '^w: ' | head -n 120 || true
+            grep -E '^e: |What went wrong|Could not resolve' -A1 build.log | head -n 150 || true
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
