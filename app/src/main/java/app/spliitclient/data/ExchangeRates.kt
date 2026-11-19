@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -81,7 +82,7 @@ class ExchangeRates(context: Context) {
 
     private fun fetchFrankfurter(from: String, to: String, day: LocalDate, now: Long): RateQuote? {
         val text = httpGet("https://api.frankfurter.dev/v2/rates?date=$day&base=$from&quotes=$to") ?: return null
-        val array = json.parseToJsonElement(text) as? JsonArray ?: return null
+        val array = parseOrNull(text) as? JsonArray ?: return null
         for (element in array) {
             val obj = element as? JsonObject ?: continue
             if ((obj["quote"] as? JsonPrimitive)?.contentOrNull != to) continue
@@ -104,7 +105,7 @@ class ExchangeRates(context: Context) {
             )
             for (url in urls) {
                 val text = httpGet(url) ?: continue
-                val obj = json.parseToJsonElement(text) as? JsonObject ?: continue
+                val obj = parseOrNull(text) as? JsonObject ?: continue
                 val rates = obj[base] as? JsonObject ?: continue
                 val rate = (rates[quote] as? JsonPrimitive)?.doubleOrNull ?: continue
                 if (!isUsable(rate)) continue
@@ -113,6 +114,12 @@ class ExchangeRates(context: Context) {
             }
         }
         return null
+    }
+
+    private fun parseOrNull(text: String): JsonElement? = try {
+        json.parseToJsonElement(text)
+    } catch (e: Exception) {
+        null
     }
 
     private fun isUsable(rate: Double) = rate.isFinite() && rate > 0.0 && rate < 1e12
