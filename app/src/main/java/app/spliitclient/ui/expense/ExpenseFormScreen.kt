@@ -365,7 +365,7 @@ private fun AmountSection(vm: ExpenseFormViewModel, group: Group, onPickCurrency
             ) {
                 FilterChip(
                     selected = vm.convert,
-                    onClick = { vm.setConvert(!vm.convert) },
+                    onClick = { vm.switchConversion(!vm.convert) },
                     label = { Text("Pagato in un'altra valuta") },
                     leadingIcon = if (vm.convert) {
                         { Icon(Icons.Filled.Check, contentDescription = null) }
@@ -434,13 +434,15 @@ private fun SplitSection(vm: ExpenseFormViewModel, group: Group) {
                             value = vm.values[p.id].orEmpty(),
                             onValueChange = { if (it.length <= 12) vm.updateValue(p.id, it) },
                             singleLine = true,
-                            prefix = if (vm.splitMode == SplitMode.BY_AMOUNT) {
-                                { Text(group.currency + " ") }
-                            } else null,
-                            suffix = when (vm.splitMode) {
-                                SplitMode.BY_PERCENTAGE -> ({ Text(" %") })
-                                SplitMode.BY_SHARES -> ({ Text(" ×") })
-                                else -> null
+                            prefix = {
+                                if (vm.splitMode == SplitMode.BY_AMOUNT) Text(group.currency + " ")
+                            },
+                            suffix = {
+                                when (vm.splitMode) {
+                                    SplitMode.BY_PERCENTAGE -> Text(" %")
+                                    SplitMode.BY_SHARES -> Text(" ×")
+                                    else -> Unit
+                                }
                             },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                             modifier = Modifier.width(132.dp),

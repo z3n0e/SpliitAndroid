@@ -197,7 +197,7 @@ class ExpenseFormViewModel(private val route: ExpenseRoute, private val repo: Re
         if (convert && !rateManual) fetchRate()
     }
 
-    fun setConvert(on: Boolean) {
+    fun switchConversion(on: Boolean) {
         val g = group ?: return
         if (on && !canConvert) return
         convert = on
