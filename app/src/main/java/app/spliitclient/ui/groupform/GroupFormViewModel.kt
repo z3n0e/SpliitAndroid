@@ -7,11 +7,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.spliitclient.R
 import app.spliitclient.data.GroupFormParticipant
 import app.spliitclient.data.GroupFormValues
 import app.spliitclient.data.Repository
 import app.spliitclient.util.CurrencyTable
+import app.spliitclient.util.UiText
 import app.spliitclient.util.attempt
+import app.spliitclient.util.uiText
 import app.spliitclient.util.userMessage
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -27,11 +30,11 @@ class GroupFormViewModel(private val groupId: String?, private val repo: Reposit
 
     var loading by mutableStateOf(groupId != null)
         private set
-    var loadError by mutableStateOf<String?>(null)
+    var loadError by mutableStateOf<UiText?>(null)
         private set
     var saving by mutableStateOf(false)
         private set
-    var error by mutableStateOf<String?>(null)
+    var error by mutableStateOf<UiText?>(null)
         private set
     /** Valorizzato a salvataggio riuscito (id del gruppo). */
     var savedGroupId by mutableStateOf<String?>(null)
@@ -109,16 +112,16 @@ class GroupFormViewModel(private val groupId: String?, private val repo: Reposit
         if (value.length <= 50) participants[index] = draft.copy(name = value)
     }
 
-    private fun validate(): String? {
+    private fun validate(): UiText? {
         val n = name.trim()
-        if (n.length !in 2..50) return "Il nome del gruppo deve avere tra 2 e 50 caratteri."
+        if (n.length !in 2..50) return uiText(R.string.v_group_name)
         val symbol = symbol()
-        if (symbol.isEmpty() || symbol.length > 5) return "Il simbolo della valuta deve avere da 1 a 5 caratteri."
-        if (information.length > 10_000) return "Le informazioni sono troppo lunghe."
+        if (symbol.isEmpty() || symbol.length > 5) return uiText(R.string.v_currency_symbol)
+        if (information.length > 10_000) return uiText(R.string.v_information_long)
         val names = participants.map { it.name.trim() }
-        if (names.isEmpty()) return "Serve almeno un partecipante."
-        if (names.any { it.length !in 2..50 }) return "Ogni nome deve avere tra 2 e 50 caratteri."
-        if (names.toSet().size != names.size) return "Due partecipanti hanno lo stesso nome."
+        if (names.isEmpty()) return uiText(R.string.v_participants_empty)
+        if (names.any { it.length !in 2..50 }) return uiText(R.string.v_participant_name)
+        if (names.toSet().size != names.size) return uiText(R.string.v_participant_duplicate)
         return null
     }
 

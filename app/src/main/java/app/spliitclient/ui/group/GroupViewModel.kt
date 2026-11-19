@@ -5,13 +5,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.spliitclient.R
 import app.spliitclient.data.BalancesResult
 import app.spliitclient.data.ExpenseItem
 import app.spliitclient.data.Group
 import app.spliitclient.data.GroupActivity
 import app.spliitclient.data.Repository
 import app.spliitclient.data.StatsOverview
+import app.spliitclient.util.UiText
 import app.spliitclient.util.attempt
+import app.spliitclient.util.uiText
 import app.spliitclient.util.userMessage
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -20,7 +23,7 @@ import kotlinx.coroutines.launch
 
 data class GroupUi(
     val group: Group? = null,
-    val groupError: String? = null,
+    val groupError: UiText? = null,
     val refreshing: Boolean = false,
     val activeParticipantId: String? = null,
     val filter: String = "",
@@ -29,18 +32,18 @@ data class GroupUi(
     val expensesHasMore: Boolean = true,
     val expensesLoading: Boolean = false,
     val expensesLoaded: Boolean = false,
-    val expensesError: String? = null,
+    val expensesError: UiText? = null,
     val balances: BalancesResult? = null,
-    val balancesError: String? = null,
+    val balancesError: UiText? = null,
     val activities: List<GroupActivity> = emptyList(),
     val activitiesCursor: Int = 0,
     val activitiesHasMore: Boolean = true,
     val activitiesLoading: Boolean = false,
     val activitiesLoaded: Boolean = false,
-    val activitiesError: String? = null,
+    val activitiesError: UiText? = null,
     val stats: StatsOverview? = null,
     val statsLoading: Boolean = false,
-    val statsError: String? = null,
+    val statsError: UiText? = null,
 )
 
 /**
@@ -150,7 +153,7 @@ class GroupViewModel(private val groupId: String, private val repo: Repository) 
         attempt { repo.loadGroup(groupId, force = true) }
             .onSuccess { group ->
                 if (group == null) {
-                    ui = ui.copy(group = null, groupError = "Questo gruppo non esiste più o il link non è corretto.")
+                    ui = ui.copy(group = null, groupError = uiText(R.string.group_missing))
                 } else {
                     val active = ui.activeParticipantId?.takeIf { id -> group.participants.any { it.id == id } }
                     if (!touched) {

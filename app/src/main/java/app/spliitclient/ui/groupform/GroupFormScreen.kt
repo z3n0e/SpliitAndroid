@@ -43,16 +43,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.spliitclient.LocalContainer
+import app.spliitclient.R
 import app.spliitclient.ui.components.ChoiceDialog
 import app.spliitclient.ui.components.ConfirmDialog
 import app.spliitclient.ui.components.ErrorBox
 import app.spliitclient.ui.components.FieldButton
 import app.spliitclient.ui.components.LoadingBox
 import app.spliitclient.util.CurrencyTable
+import app.spliitclient.util.asString
+import app.spliitclient.util.uiText
 
 @Composable
 fun GroupFormScreen(groupId: String?, onDone: (String?) -> Unit, onRemoved: () -> Unit) {
@@ -67,9 +71,9 @@ fun GroupFormScreen(groupId: String?, onDone: (String?) -> Unit, onRemoved: () -
         modifier = Modifier.imePadding(),
         topBar = {
             TopAppBar(
-                title = { Text(if (vm.isEdit) "Impostazioni del gruppo" else "Nuovo gruppo") },
+                title = { Text(stringResource(if (vm.isEdit) R.string.group_settings else R.string.action_new_group)) },
                 navigationIcon = {
-                    IconButton(onClick = { onDone(null) }) { Icon(Icons.Filled.Close, contentDescription = "Chiudi senza salvare") }
+                    IconButton(onClick = { onDone(null) }) { Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.action_close_without_saving)) }
                 },
             )
         },
@@ -87,11 +91,13 @@ fun GroupFormScreen(groupId: String?, onDone: (String?) -> Unit, onRemoved: () -
                             .height(56.dp),
                     ) {
                         Text(
-                            when {
-                                vm.saving -> "Salvataggio…"
-                                vm.isEdit -> "Salva modifiche"
-                                else -> "Crea gruppo"
-                            },
+                            stringResource(
+                                when {
+                                    vm.saving -> R.string.saving
+                                    vm.isEdit -> R.string.action_save_changes
+                                    else -> R.string.action_create_group
+                                },
+                            ),
                             style = MaterialTheme.typography.titleMedium,
                         )
                     }
@@ -101,7 +107,7 @@ fun GroupFormScreen(groupId: String?, onDone: (String?) -> Unit, onRemoved: () -
     ) { padding ->
         when {
             vm.loading -> LoadingBox(Modifier.padding(padding))
-            vm.loadError != null -> ErrorBox(vm.loadError ?: "", onRetry = vm::load, modifier = Modifier.padding(padding))
+            vm.loadError != null -> ErrorBox(vm.loadError ?: uiText(R.string.error_unexpected), onRetry = vm::load, modifier = Modifier.padding(padding))
             else -> Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -113,16 +119,16 @@ fun GroupFormScreen(groupId: String?, onDone: (String?) -> Unit, onRemoved: () -
                 OutlinedTextField(
                     value = vm.name,
                     onValueChange = { if (it.length <= 50) vm.name = it },
-                    label = { Text("Nome del gruppo") },
-                    placeholder = { Text("Es. Vacanza in Sardegna") },
+                    label = { Text(stringResource(R.string.group_name)) },
+                    placeholder = { Text(stringResource(R.string.group_name_hint)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                     modifier = Modifier.fillMaxWidth(),
                 )
 
                 FieldButton(
-                    label = "Valuta",
-                    value = if (vm.currencyCode.isEmpty()) "Simbolo personalizzato"
+                    label = stringResource(R.string.currency),
+                    value = if (vm.currencyCode.isEmpty()) stringResource(R.string.currency_custom)
                     else "${CurrencyTable.displayName(vm.currencyCode)} (${CurrencyTable.symbol(vm.currencyCode)})",
                     onClick = { pickCurrency = true },
                 )
@@ -130,7 +136,7 @@ fun GroupFormScreen(groupId: String?, onDone: (String?) -> Unit, onRemoved: () -
                     OutlinedTextField(
                         value = vm.customSymbol,
                         onValueChange = { if (it.length <= 5) vm.customSymbol = it },
-                        label = { Text("Simbolo (max 5 caratteri)") },
+                        label = { Text(stringResource(R.string.currency_symbol_label)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -138,10 +144,10 @@ fun GroupFormScreen(groupId: String?, onDone: (String?) -> Unit, onRemoved: () -
 
                 Surface(shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surfaceContainerLow) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Partecipanti", style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.participants), style = MaterialTheme.typography.titleMedium)
                         if (!vm.isEdit) {
                             Text(
-                                "Segna il tuo nome: così l'app sa chi sei.",
+                                stringResource(R.string.participants_me_hint),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -156,9 +162,9 @@ fun GroupFormScreen(groupId: String?, onDone: (String?) -> Unit, onRemoved: () -
                                     value = draft.name,
                                     onValueChange = { vm.rename(index, it) },
                                     singleLine = true,
-                                    placeholder = { Text("Nome") },
+                                    placeholder = { Text(stringResource(R.string.name)) },
                                     supportingText = if (locked) {
-                                        { Text("Ha delle spese, non si può togliere") }
+                                        { Text(stringResource(R.string.participant_locked)) }
                                     } else null,
                                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
                                     modifier = Modifier.weight(1f),
@@ -166,13 +172,13 @@ fun GroupFormScreen(groupId: String?, onDone: (String?) -> Unit, onRemoved: () -
                                 IconButton(
                                     onClick = { vm.removeParticipant(index) },
                                     enabled = !locked && vm.participants.size > 1,
-                                ) { Icon(Icons.Filled.Delete, contentDescription = "Togli ${draft.name}") }
+                                ) { Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.participant_remove, draft.name)) }
                             }
                         }
                         OutlinedButton(onClick = vm::addParticipant) {
                             Icon(Icons.Filled.Add, contentDescription = null)
                             Spacer(Modifier.padding(start = 6.dp))
-                            Text("Aggiungi partecipante")
+                            Text(stringResource(R.string.participant_add))
                         }
                     }
                 }
@@ -180,19 +186,19 @@ fun GroupFormScreen(groupId: String?, onDone: (String?) -> Unit, onRemoved: () -
                 OutlinedTextField(
                     value = vm.information,
                     onValueChange = { if (it.length <= 10_000) vm.information = it },
-                    label = { Text("Informazioni (facoltative)") },
-                    placeholder = { Text("Es. IBAN per i rimborsi, regole del gruppo…") },
+                    label = { Text(stringResource(R.string.information_optional)) },
+                    placeholder = { Text(stringResource(R.string.information_hint)) },
                     minLines = 3,
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-                if (vm.error != null) {
-                    Text(vm.error ?: "", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+                vm.error?.let {
+                    Text(it.asString(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
                 }
 
                 if (vm.isEdit) {
                     TextButton(onClick = { confirmRemove = true }) {
-                        Text("Rimuovi il gruppo da questo telefono", color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.remove_group_from_phone), color = MaterialTheme.colorScheme.error)
                     }
                 }
                 Spacer(Modifier.height(24.dp))
@@ -203,11 +209,11 @@ fun GroupFormScreen(groupId: String?, onDone: (String?) -> Unit, onRemoved: () -
     if (pickCurrency) {
         val options = CurrencyTable.entries.map { it.code } + ""
         ChoiceDialog(
-            title = "Valuta del gruppo",
+            title = stringResource(R.string.group_currency),
             options = options,
             selected = vm.currencyCode,
             label = { code ->
-                if (code.isEmpty()) "Altro: simbolo personalizzato"
+                if (code.isEmpty()) stringResource(R.string.currency_other_custom)
                 else "${CurrencyTable.displayName(code)} (${CurrencyTable.symbol(code)})"
             },
             onDismiss = { pickCurrency = false },
@@ -217,9 +223,9 @@ fun GroupFormScreen(groupId: String?, onDone: (String?) -> Unit, onRemoved: () -
 
     if (confirmRemove) {
         ConfirmDialog(
-            title = "Rimuovere il gruppo da questo telefono?",
-            text = "Il gruppo resta sul server per gli altri. Per ritrovarlo ti servirà di nuovo il link.",
-            confirmLabel = "Rimuovi",
+            title = stringResource(R.string.remove_group_from_phone_title),
+            text = stringResource(R.string.remove_group_text),
+            confirmLabel = stringResource(R.string.action_remove),
             onConfirm = { confirmRemove = false; vm.removeFromDevice(); onRemoved() },
             onDismiss = { confirmRemove = false },
         )

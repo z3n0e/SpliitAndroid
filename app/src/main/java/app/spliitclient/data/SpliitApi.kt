@@ -1,5 +1,7 @@
 package app.spliitclient.data
 
+import app.spliitclient.R
+import app.spliitclient.util.uiText
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -21,7 +23,7 @@ class SpliitApi(private val client: TrpcClient) {
 
     private fun JsonElement.stringField(name: String): String =
         ((this as? JsonObject)?.get(name) as? JsonPrimitive)?.content
-            ?: throw ApiException("Risposta incompleta dal server.", ApiException.Kind.Server)
+            ?: throw ApiException(uiText(R.string.error_incomplete_response), ApiException.Kind.Server)
 
     suspend fun getGroup(groupId: String): Group? {
         val result = client.query("groups.get", buildJsonObject { put("groupId", groupId) })
@@ -79,7 +81,7 @@ class SpliitApi(private val client: TrpcClient) {
             put("expenseId", expenseId)
         })
         val expense = result.field("expense")
-            ?: throw ApiException("Spesa non trovata.", ApiException.Kind.NotFound)
+            ?: throw ApiException(uiText(R.string.error_expense_not_found), ApiException.Kind.NotFound)
         return json.decodeFromJsonElement(ExpenseDetail.serializer(), expense)
     }
 

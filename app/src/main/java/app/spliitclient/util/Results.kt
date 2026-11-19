@@ -1,9 +1,10 @@
 package app.spliitclient.util
 
+import app.spliitclient.R
 import app.spliitclient.data.ApiException
 import kotlin.coroutines.cancellation.CancellationException
 
-/** Come runCatching, ma non intercetta la cancellazione delle coroutine. */
+/** Like runCatching, but never swallows coroutine cancellation. */
 inline fun <T> attempt(block: () -> T): Result<T> = try {
     Result.success(block())
 } catch (e: CancellationException) {
@@ -12,5 +13,5 @@ inline fun <T> attempt(block: () -> T): Result<T> = try {
     Result.failure(e)
 }
 
-fun Throwable.userMessage(): String =
-    (this as? ApiException)?.message ?: "Si è verificato un errore imprevisto. Riprova."
+fun Throwable.userMessage(): UiText =
+    (this as? ApiException)?.text ?: uiText(R.string.error_unexpected)

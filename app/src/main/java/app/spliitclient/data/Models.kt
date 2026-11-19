@@ -1,5 +1,7 @@
 package app.spliitclient.data
 
+import androidx.annotation.StringRes
+import app.spliitclient.R
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
@@ -164,23 +166,23 @@ data class GroupFormValues(
     val participants: List<GroupFormParticipant>,
 )
 
-enum class SplitMode(val label: String) {
-    EVENLY("In parti uguali"),
-    BY_SHARES("Per quote"),
-    BY_PERCENTAGE("Percentuale"),
-    BY_AMOUNT("Importi");
+enum class SplitMode(@StringRes val label: Int, @StringRes val shortLabel: Int) {
+    EVENLY(R.string.split_evenly, R.string.split_evenly_short),
+    BY_SHARES(R.string.split_shares, R.string.split_shares_short),
+    BY_PERCENTAGE(R.string.split_percentage, R.string.split_percentage_short),
+    BY_AMOUNT(R.string.split_amount, R.string.split_amount_short);
 
     companion object {
         fun from(value: String?): SplitMode = entries.firstOrNull { it.name == value } ?: EVENLY
     }
 }
 
-enum class Recurrence(val label: String) {
-    NONE("Mai"),
-    DAILY("Ogni giorno"),
-    WEEKLY("Ogni settimana"),
-    MONTHLY("Ogni mese"),
-    YEARLY("Ogni anno");
+enum class Recurrence(@StringRes val label: Int) {
+    NONE(R.string.recurrence_none),
+    DAILY(R.string.recurrence_daily),
+    WEEKLY(R.string.recurrence_weekly),
+    MONTHLY(R.string.recurrence_monthly),
+    YEARLY(R.string.recurrence_yearly);
 
     companion object {
         fun from(value: String?): Recurrence = entries.firstOrNull { it.name == value } ?: NONE

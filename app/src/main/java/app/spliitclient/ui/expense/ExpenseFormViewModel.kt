@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.spliitclient.R
 import app.spliitclient.data.ExpenseDetail
 import app.spliitclient.data.ExpenseDocument
 import app.spliitclient.data.Group
@@ -14,7 +15,9 @@ import app.spliitclient.data.Recurrence
 import app.spliitclient.data.Repository
 import app.spliitclient.data.SplitMode
 import app.spliitclient.util.Money
+import app.spliitclient.util.UiText
 import app.spliitclient.util.attempt
+import app.spliitclient.util.uiText
 import app.spliitclient.util.userMessage
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -50,13 +53,13 @@ class ExpenseFormViewModel(private val route: ExpenseRoute, private val repo: Re
         private set
     var loading by mutableStateOf(true)
         private set
-    var loadError by mutableStateOf<String?>(null)
+    var loadError by mutableStateOf<UiText?>(null)
         private set
     var saving by mutableStateOf(false)
         private set
     var deleting by mutableStateOf(false)
         private set
-    var error by mutableStateOf<String?>(null)
+    var error by mutableStateOf<UiText?>(null)
         private set
     var done by mutableStateOf(false)
         private set
@@ -83,7 +86,7 @@ class ExpenseFormViewModel(private val route: ExpenseRoute, private val repo: Re
         private set
     var rateText by mutableStateOf("")
         private set
-    var rateInfo by mutableStateOf<String?>(null)
+    var rateInfo by mutableStateOf<UiText?>(null)
         private set
     var rateLoading by mutableStateOf(false)
         private set
@@ -107,6 +110,14 @@ class ExpenseFormViewModel(private val route: ExpenseRoute, private val repo: Re
      */
     private var autoValues = true
 
+    /** Reimbursement prefill: the UI provides the title in the current language. */
+    private var wantsReimbursementTitle = false
+
+    fun applyDefaultTitle(text: String) {
+        if (wantsReimbursementTitle && title.isBlank()) title = text
+        wantsReimbursementTitle = false
+    }
+
     init {
         viewModelScope.launch { load() }
     }
@@ -122,7 +133,7 @@ class ExpenseFormViewModel(private val route: ExpenseRoute, private val repo: Re
             loadError = it.userMessage(); loading = false; return
         }
         if (g == null) {
-            loadError = "Gruppo non trovato."; loading = false; return
+            loadError = uiText(R.string.error_group_not_found); loading = false; return
         }
         group = g
         val code = g.currencyCode
@@ -135,7 +146,8 @@ class ExpenseFormViewModel(private val route: ExpenseRoute, private val repo: Re
                 fill(e, g)
             }
             route.reimburseFrom != null && route.reimburseTo != null -> {
-                title = "Rimborso"
+                title = ""
+                wantsReimbursementTitle = true
                 isReimbursement = true
                 categoryId = 1
                 paidBy = route.reimburseFrom
@@ -179,7 +191,7 @@ class ExpenseFormViewModel(private val route: ExpenseRoute, private val repo: Re
             originalAmountText = Money.toInput(e.originalAmount, oc)
             rateText = formatRate(savedRate)
             rateManual = true // teniamo il tasso usato quando la spesa è stata creata
-            rateInfo = "Tasso salvato con la spesa. Tocca ↻ per usare quello di oggi."
+            rateInfo = uiText(R.string.rate_saved_with_expense)
         }
         g.participants.forEach { p -> selected[p.id] = e.paidFor.any { it.participantId == p.id } }
         e.paidFor.forEach { pf ->
@@ -229,7 +241,7 @@ class ExpenseFormViewModel(private val route: ExpenseRoute, private val repo: Re
     fun updateRate(text: String) {
         rateText = text
         rateManual = true
-        rateInfo = "Tasso inserito a mano."
+        rateInfo = uiText(R.string.rate_manual)
         recompute()
     }
 
@@ -259,7 +271,7 @@ class ExpenseFormViewModel(private val route: ExpenseRoute, private val repo: Re
             rateLoading = false
             if (rateManual) return@launch // nel frattempo hai scritto un tasso a mano
             if (q == null) {
-                rateInfo = "Nessun tasso disponibile senza connessione: inseriscilo a mano."
+                rateInfo = uiText(R.string.rate_unavailable)
                 return@launch
             }
             rateText = formatRate(BigDecimal.valueOf(q.rate))
@@ -268,8 +280,11 @@ class ExpenseFormViewModel(private val route: ExpenseRoute, private val repo: Re
             } catch (e: Exception) {
                 q.date
             }
-            rateInfo = if (q.offline) "Sei offline: uso l'ultimo tasso salvato, del $day."
-            else "Tasso del $day (${q.source})."
+            rateInfo = when {
+                q.offline -> uiText(R.string.rate_offline, day)
+                q.source == "ecb" || q.source == "BCE" -> uiText(R.string.rate_info_ecb, day)
+                else -> uiText(R.string.rate_info_other, day)
+            }
             recompute()
         }
     }
@@ -398,39 +413,39 @@ class ExpenseFormViewModel(private val route: ExpenseRoute, private val repo: Re
     private fun hundredths(text: String): Long? =
         Money.parseDecimal(text)?.movePointRight(2)?.setScale(0, RoundingMode.HALF_UP)?.toLong()
 
-    private fun validate(g: Group): String? {
+    private fun validate(g: Group): UiText? {
         val code = g.currencyCode
         val t = title.trim()
-        if (t.length < 2) return "Il titolo deve avere almeno 2 caratteri."
-        if (t.length > 200) return "Il titolo è troppo lungo (massimo 200 caratteri)."
+        if (t.length < 2) return uiText(R.string.v_title_short)
+        if (t.length > 200) return uiText(R.string.v_title_long)
         if (convert) {
             val original = Money.parse(originalAmountText, originalCurrency)
-                ?: return "Inserisci quanto hai pagato in $originalCurrency."
-            if (original == 0L) return "L'importo pagato non può essere zero."
-            if (original > 1_000_000_000L || original < -1_000_000_000L) return "L'importo pagato è troppo grande."
+                ?: return uiText(R.string.v_original_amount, originalCurrency)
+            if (original == 0L) return uiText(R.string.v_original_zero)
+            if (original > 1_000_000_000L || original < -1_000_000_000L) return uiText(R.string.v_original_too_big)
             val rate = Money.parseDecimal(rateText)
-            if (rate == null || rate.signum() <= 0) return "Inserisci un tasso di cambio valido."
+            if (rate == null || rate.signum() <= 0) return uiText(R.string.v_rate_invalid)
         }
-        val amount = Money.parse(amountText, code) ?: return "Inserisci un importo valido."
-        if (amount == 0L) return "L'importo non può essere zero."
-        if (amount > 1_000_000_000L || amount < -1_000_000_000L) return "L'importo è troppo grande."
-        if (paidBy == null || g.participants.none { it.id == paidBy }) return "Scegli chi ha pagato."
+        val amount = Money.parse(amountText, code) ?: return uiText(R.string.v_amount_invalid)
+        if (amount == 0L) return uiText(R.string.v_amount_zero)
+        if (amount > 1_000_000_000L || amount < -1_000_000_000L) return uiText(R.string.v_amount_too_big)
+        if (paidBy == null || g.participants.none { it.id == paidBy }) return uiText(R.string.v_paid_by)
         val ids = selectedIds()
-        if (ids.isEmpty()) return "Seleziona almeno una persona per cui è stata fatta la spesa."
-        if (notes.length > 5000) return "Le note sono troppo lunghe (massimo 5000 caratteri)."
+        if (ids.isEmpty()) return uiText(R.string.v_no_participants)
+        if (notes.length > 5000) return uiText(R.string.v_notes_long)
         when (splitMode) {
             SplitMode.EVENLY -> Unit
             SplitMode.BY_SHARES -> if (ids.any { (hundredths(values[it].orEmpty()) ?: 0L) <= 0L }) {
-                return "Ogni persona selezionata deve avere almeno una quota maggiore di zero."
+                return uiText(R.string.v_shares_positive)
             }
             SplitMode.BY_PERCENTAGE -> {
-                if (ids.any { (hundredths(values[it].orEmpty()) ?: 0L) <= 0L }) return "Ogni percentuale deve essere maggiore di zero."
-                if (allocated() != 10_000L) return "Le percentuali devono fare 100% in totale."
+                if (ids.any { (hundredths(values[it].orEmpty()) ?: 0L) <= 0L }) return uiText(R.string.v_percent_positive)
+                if (allocated() != 10_000L) return uiText(R.string.v_percent_total)
             }
             SplitMode.BY_AMOUNT -> {
-                if (amount < 0) return "Con importi negativi usa la divisione in parti uguali."
-                if (ids.any { (Money.parse(values[it].orEmpty(), code) ?: 0L) <= 0L }) return "Ogni importo deve essere maggiore di zero."
-                if (allocated() != amount) return "La somma degli importi deve essere uguale al totale della spesa."
+                if (amount < 0) return uiText(R.string.v_negative_by_amount)
+                if (ids.any { (Money.parse(values[it].orEmpty(), code) ?: 0L) <= 0L }) return uiText(R.string.v_amounts_positive)
+                if (allocated() != amount) return uiText(R.string.v_amounts_total)
             }
         }
         return null

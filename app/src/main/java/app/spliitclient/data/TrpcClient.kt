@@ -1,5 +1,8 @@
 package app.spliitclient.data
 
+import app.spliitclient.R
+import app.spliitclient.util.UiText
+import app.spliitclient.util.uiText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -17,7 +20,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 
-class ApiException(message: String, val kind: Kind, val httpCode: Int = 0) : Exception(message) {
+class ApiException(val text: UiText, val kind: Kind, val httpCode: Int = 0) : Exception(text.toString()) {
     enum class Kind { Network, NotFound, Invalid, Forbidden, Server }
 }
 
@@ -52,12 +55,12 @@ class TrpcClient(private val baseUrl: () -> String) {
         withContext(Dispatchers.IO) {
             val base = baseUrl().trimEnd('/')
             if (!base.startsWith("https://")) {
-                throw ApiException("L'indirizzo del server deve iniziare con https://", ApiException.Kind.Invalid)
+                throw ApiException(uiText(R.string.error_server_https), ApiException.Kind.Invalid)
             }
             val connection = try {
                 URL("$base/api/trpc/$path$query").openConnection() as HttpURLConnection
             } catch (e: Exception) {
-                throw ApiException("Indirizzo del server non valido.", ApiException.Kind.Invalid)
+                throw ApiException(uiText(R.string.error_server_invalid), ApiException.Kind.Invalid)
             }
             try {
                 connection.requestMethod = method
@@ -83,10 +86,7 @@ class TrpcClient(private val baseUrl: () -> String) {
                 throw e
             } catch (e: IOException) {
                 connection.disconnect()
-                throw ApiException(
-                    "Connessione non riuscita. Controlla la rete e riprova.",
-                    ApiException.Kind.Network,
-                )
+                throw ApiException(uiText(R.string.error_network), ApiException.Kind.Network)
             }
         }
 
@@ -95,11 +95,7 @@ class TrpcClient(private val baseUrl: () -> String) {
             json.parseToJsonElement(text) as? JsonObject
         } catch (e: Exception) {
             null
-        } ?: throw ApiException(
-            if (httpCode >= 500) "Il server non risponde correttamente ($httpCode)." else "Risposta non valida dal server ($httpCode).",
-            ApiException.Kind.Server,
-            httpCode,
-        )
+        } ?: throw ApiException(uiText(R.string.error_bad_response, httpCode), ApiException.Kind.Server, httpCode)
 
         val error = root["error"]
         if (error != null && error !is JsonNull) {
@@ -107,11 +103,11 @@ class TrpcClient(private val baseUrl: () -> String) {
             val data = errorObj?.get("data") as? JsonObject
             val trpcCode = (data?.get("code") as? JsonPrimitive)?.contentOrNull
             throw when (trpcCode) {
-                "NOT_FOUND" -> ApiException("Non trovato sul server.", ApiException.Kind.NotFound, httpCode)
-                "BAD_REQUEST" -> ApiException("Il server ha rifiutato i dati: controlla i campi e riprova.", ApiException.Kind.Invalid, httpCode)
-                "FORBIDDEN", "UNAUTHORIZED" -> ApiException("Operazione non consentita su questo server.", ApiException.Kind.Forbidden, httpCode)
-                "TOO_MANY_REQUESTS" -> ApiException("Troppe richieste: attendi un momento e riprova.", ApiException.Kind.Server, httpCode)
-                else -> ApiException("Errore del server ($httpCode). Riprova tra poco.", ApiException.Kind.Server, httpCode)
+                "NOT_FOUND" -> ApiException(uiText(R.string.error_not_found), ApiException.Kind.NotFound, httpCode)
+                "BAD_REQUEST" -> ApiException(uiText(R.string.error_bad_request), ApiException.Kind.Invalid, httpCode)
+                "FORBIDDEN", "UNAUTHORIZED" -> ApiException(uiText(R.string.error_forbidden), ApiException.Kind.Forbidden, httpCode)
+                "TOO_MANY_REQUESTS" -> ApiException(uiText(R.string.error_rate_limited), ApiException.Kind.Server, httpCode)
+                else -> ApiException(uiText(R.string.error_server, httpCode), ApiException.Kind.Server, httpCode)
             }
         }
         val result = root["result"] as? JsonObject
@@ -128,7 +124,7 @@ class TrpcClient(private val baseUrl: () -> String) {
             if (n < 0) break
             total += n
             if (total > MAX_RESPONSE_BYTES) {
-                throw ApiException("Risposta del server troppo grande.", ApiException.Kind.Server)
+                throw ApiException(uiText(R.string.error_response_too_large), ApiException.Kind.Server)
             }
             out.write(buffer, 0, n)
         }

@@ -18,6 +18,16 @@ data class SavedGroup(
     val lastOpened: Long = 0L,
 )
 
+enum class ThemeMode { SYSTEM, LIGHT, DARK }
+
+/** Appearance preferences: theme, pure black (AMOLED), wallpaper colors and accent color. */
+data class Appearance(
+    val mode: ThemeMode = ThemeMode.SYSTEM,
+    val amoled: Boolean = false,
+    val dynamicColor: Boolean = true,
+    val accent: String = "TEAL",
+)
+
 /**
  * Dati locali (solo su questo dispositivo, nella memoria privata dell'app):
  * gruppi salvati, "chi sei" in ogni gruppo, server e preferenze.
@@ -36,8 +46,22 @@ class LocalStore(context: Context) {
     private val _serverUrl = MutableStateFlow(prefs.getString(KEY_SERVER, null) ?: DEFAULT_SERVER)
     val serverUrl: StateFlow<String> = _serverUrl.asStateFlow()
 
-    private val _dynamicColor = MutableStateFlow(prefs.getBoolean(KEY_DYNAMIC, true))
-    val dynamicColor: StateFlow<Boolean> = _dynamicColor.asStateFlow()
+    private val _appearance = MutableStateFlow(
+        Appearance(
+            mode = ThemeMode.entries.firstOrNull { it.name == prefs.getString(KEY_THEME, null) } ?: ThemeMode.SYSTEM,
+            amoled = prefs.getBoolean(KEY_AMOLED, false),
+            dynamicColor = prefs.getBoolean(KEY_DYNAMIC, true),
+            accent = prefs.getString(KEY_ACCENT, null) ?: "TEAL",
+        ),
+    )
+    val appearance: StateFlow<Appearance> = _appearance.asStateFlow()
+
+    /** App language for Android 12 and older ("" = follow the system). Android 13+ uses the system setting. */
+    var language: String
+        get() = prefs.getString(KEY_LANGUAGE, null).orEmpty()
+        set(value) {
+            prefs.edit().putString(KEY_LANGUAGE, value).apply()
+        }
 
     private fun readGroups(): List<SavedGroup> = try {
         json.decodeFromString(listSerializer, prefs.getString(KEY_GROUPS, null) ?: "[]")
@@ -110,9 +134,24 @@ class LocalStore(context: Context) {
         prefs.edit().putString(KEY_SERVER, url).apply()
     }
 
+    fun setThemeMode(mode: ThemeMode) {
+        _appearance.value = _appearance.value.copy(mode = mode)
+        prefs.edit().putString(KEY_THEME, mode.name).apply()
+    }
+
+    fun setAmoled(enabled: Boolean) {
+        _appearance.value = _appearance.value.copy(amoled = enabled)
+        prefs.edit().putBoolean(KEY_AMOLED, enabled).apply()
+    }
+
     fun setDynamicColor(enabled: Boolean) {
-        _dynamicColor.value = enabled
+        _appearance.value = _appearance.value.copy(dynamicColor = enabled)
         prefs.edit().putBoolean(KEY_DYNAMIC, enabled).apply()
+    }
+
+    fun setAccent(name: String) {
+        _appearance.value = _appearance.value.copy(accent = name, dynamicColor = false)
+        prefs.edit().putString(KEY_ACCENT, name).putBoolean(KEY_DYNAMIC, false).apply()
     }
 
     companion object {
@@ -120,5 +159,9 @@ class LocalStore(context: Context) {
         private const val KEY_GROUPS = "groups"
         private const val KEY_SERVER = "server"
         private const val KEY_DYNAMIC = "dynamic_color"
+        private const val KEY_THEME = "theme_mode"
+        private const val KEY_AMOLED = "amoled"
+        private const val KEY_ACCENT = "accent"
+        private const val KEY_LANGUAGE = "language"
     }
 }

@@ -19,6 +19,14 @@ Usa lo stesso server del sito: i gruppi creati qui si aprono anche dal web e dal
 - **Link**: apre i link `https://spliit.app/groups/...` e accetta "Condividi" da altre app.
 - **Server self-hosted**: puoi puntare l'app alla tua istanza (solo https).
 
+## Personalizzazione / Customization
+
+- Tema: sistema, chiaro o scuro, più **nero assoluto (AMOLED)** per gli schermi OLED.
+- Colori dallo sfondo (Material You, Android 12+) oppure 8 colori principali, con palette complete
+  generate con l'algoritmo ufficiale Material Color Utilities.
+- Lingua: **inglese** e **italiano**, selezionabile nell'app (su Android 13+ anche da
+  Impostazioni di sistema → App → Spliit → Lingua).
+
 ## Design
 
 Material 3 Expressive (`MaterialExpressiveTheme`, motion "expressive", liste segmentate, `LoadingIndicator`,

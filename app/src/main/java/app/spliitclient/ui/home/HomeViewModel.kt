@@ -2,11 +2,14 @@ package app.spliitclient.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.spliitclient.R
 import app.spliitclient.data.GroupSummary
 import app.spliitclient.data.Repository
 import app.spliitclient.data.SavedGroup
 import app.spliitclient.data.UserBalance
 import app.spliitclient.util.Links
+import app.spliitclient.util.UiText
+import app.spliitclient.util.uiText
 import app.spliitclient.util.attempt
 import app.spliitclient.util.userMessage
 import kotlinx.coroutines.Job
@@ -26,9 +29,9 @@ data class HomeState(
     /** Gruppi già chiesti al server (per distinguere "non trovato" da "non ancora caricato"). */
     val checkedIds: Set<String> = emptySet(),
     val myBalances: Map<String, UserBalance> = emptyMap(),
-    val error: String? = null,
+    val error: UiText? = null,
     val adding: Boolean = false,
-    val addError: String? = null,
+    val addError: UiText? = null,
 )
 
 class HomeViewModel(private val repo: Repository) : ViewModel() {
@@ -101,7 +104,7 @@ class HomeViewModel(private val repo: Repository) : ViewModel() {
     fun addGroup(input: String, onAdded: (String) -> Unit) {
         val id = Links.extractGroupId(input)
         if (id == null) {
-            _state.update { it.copy(addError = "Non riconosco questo link. Incolla il link completo del gruppo.") }
+            _state.update { it.copy(addError = uiText(R.string.join_error_link)) }
             return
         }
         _state.update { it.copy(adding = true, addError = null) }
@@ -109,7 +112,7 @@ class HomeViewModel(private val repo: Repository) : ViewModel() {
             attempt { repo.loadGroup(id, force = true) }
                 .onSuccess { group ->
                     if (group == null) {
-                        _state.update { it.copy(adding = false, addError = "Nessun gruppo con questo link sul server attuale.") }
+                        _state.update { it.copy(adding = false, addError = uiText(R.string.join_error_not_found)) }
                     } else {
                         repo.store.upsertGroup(id, group.name, touch = true)
                         _state.update { it.copy(adding = false, addError = null) }

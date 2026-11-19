@@ -61,6 +61,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -68,8 +69,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.spliitclient.LocalContainer
+import app.spliitclient.R
 import app.spliitclient.data.Group
-import app.spliitclient.data.Participant
 import app.spliitclient.data.Recurrence
 import app.spliitclient.data.SplitMode
 import app.spliitclient.ui.components.ChoiceDialog
@@ -80,6 +81,8 @@ import app.spliitclient.ui.components.LoadingBox
 import app.spliitclient.util.Categories
 import app.spliitclient.util.Links
 import app.spliitclient.util.Money
+import app.spliitclient.util.asString
+import app.spliitclient.util.uiText
 import app.spliitclient.util.WorldCurrencies
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -95,19 +98,21 @@ fun ExpenseFormScreen(route: ExpenseRoute, onDone: () -> Unit) {
     var confirmDelete by remember { mutableStateOf(false) }
 
     LaunchedEffect(vm.done) { if (vm.done) onDone() }
+    val reimbursementTitle = stringResource(R.string.reimbursement_title)
+    LaunchedEffect(vm.loading) { if (!vm.loading) vm.applyDefaultTitle(reimbursementTitle) }
 
     Scaffold(
         modifier = Modifier.imePadding(),
         topBar = {
             TopAppBar(
-                title = { Text(if (vm.isEdit) "Modifica spesa" else "Nuova spesa") },
+                title = { Text(stringResource(if (vm.isEdit) R.string.expense_edit_title else R.string.expense_new_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onDone) { Icon(Icons.Filled.Close, contentDescription = "Chiudi senza salvare") }
+                    IconButton(onClick = onDone) { Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.action_close_without_saving)) }
                 },
                 actions = {
                     if (vm.isEdit && vm.group != null) {
                         IconButton(onClick = { confirmDelete = true }, enabled = !vm.deleting) {
-                            Icon(Icons.Filled.Delete, contentDescription = "Elimina spesa")
+                            Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.expense_delete))
                         }
                     }
                 },
@@ -127,7 +132,7 @@ fun ExpenseFormScreen(route: ExpenseRoute, onDone: () -> Unit) {
                             .height(56.dp),
                     ) {
                         Text(
-                            if (vm.saving) "Salvataggio…" else if (vm.isEdit) "Salva modifiche" else "Aggiungi spesa",
+                            stringResource(if (vm.saving) R.string.saving else if (vm.isEdit) R.string.action_save_changes else R.string.action_add_expense),
                             style = MaterialTheme.typography.titleMedium,
                         )
                     }
@@ -139,7 +144,7 @@ fun ExpenseFormScreen(route: ExpenseRoute, onDone: () -> Unit) {
         when {
             vm.loading -> LoadingBox(Modifier.padding(padding))
             vm.loadError != null || group == null ->
-                ErrorBox(vm.loadError ?: "Errore.", onRetry = vm::retry, modifier = Modifier.padding(padding))
+                ErrorBox(vm.loadError ?: uiText(R.string.error_unexpected), onRetry = vm::retry, modifier = Modifier.padding(padding))
             else -> FormBody(vm, group, Modifier.padding(padding), onPick = { picker = it })
         }
     }
@@ -150,7 +155,7 @@ fun ExpenseFormScreen(route: ExpenseRoute, onDone: () -> Unit) {
             Picker.None -> Unit
             Picker.Date -> DateDialog(vm.date, onDismiss = { picker = Picker.None }) { vm.updateDate(it); picker = Picker.None }
             Picker.Currency -> ChoiceDialog(
-                title = "Valuta in cui hai pagato",
+                title = stringResource(R.string.currency_paid_in),
                 options = WorldCurrencies.ordered(vm.suggestedCurrencies(), exclude = group.currencyCode?.uppercase()),
                 selected = vm.originalCurrency,
                 label = { WorldCurrencies.label(it) },
@@ -158,26 +163,26 @@ fun ExpenseFormScreen(route: ExpenseRoute, onDone: () -> Unit) {
                 onSelect = { vm.chooseOriginalCurrency(it); picker = Picker.None },
             )
             Picker.Category -> ChoiceDialog(
-                title = "Categoria",
+                title = stringResource(R.string.category),
                 options = Categories.all,
                 selected = Categories.get(vm.categoryId),
-                label = { "${it.emoji}  ${it.name}" },
+                label = { "${it.emoji}  ${stringResource(it.name)}" },
                 onDismiss = { picker = Picker.None },
                 onSelect = { vm.categoryId = it.id; picker = Picker.None },
             )
             Picker.PaidBy -> ChoiceDialog(
-                title = "Chi ha pagato?",
+                title = stringResource(R.string.who_paid),
                 options = group.participants,
                 selected = group.participants.firstOrNull { it.id == vm.paidBy },
-                label = Participant::name,
+                label = { it.name },
                 onDismiss = { picker = Picker.None },
                 onSelect = { vm.paidBy = it.id; picker = Picker.None },
             )
             Picker.Recurrence -> ChoiceDialog(
-                title = "Si ripete",
+                title = stringResource(R.string.repeats),
                 options = Recurrence.entries.toList(),
                 selected = vm.recurrence,
-                label = { it.label },
+                label = { stringResource(it.label) },
                 onDismiss = { picker = Picker.None },
                 onSelect = { vm.recurrence = it; picker = Picker.None },
             )
@@ -186,9 +191,9 @@ fun ExpenseFormScreen(route: ExpenseRoute, onDone: () -> Unit) {
 
     if (confirmDelete) {
         ConfirmDialog(
-            title = "Eliminare la spesa?",
-            text = "La spesa sparirà per tutti i membri del gruppo e i saldi verranno ricalcolati.",
-            confirmLabel = "Elimina",
+            title = stringResource(R.string.expense_delete_title),
+            text = stringResource(R.string.expense_delete_text),
+            confirmLabel = stringResource(R.string.action_delete),
             onConfirm = { confirmDelete = false; vm.delete() },
             onDismiss = { confirmDelete = false },
         )
@@ -199,9 +204,9 @@ fun ExpenseFormScreen(route: ExpenseRoute, onDone: () -> Unit) {
 private fun FormBody(vm: ExpenseFormViewModel, group: Group, modifier: Modifier, onPick: (Picker) -> Unit) {
     val context = LocalContext.current
     val code = group.currencyCode
-    val dateLabel = remember(vm.date) { formatDate(vm.date) }
+    val dateLabel = formatDate(vm.date)
     val category = Categories.get(vm.categoryId)
-    val payer = group.participants.firstOrNull { it.id == vm.paidBy }?.name ?: "Scegli"
+    val payer = group.participants.firstOrNull { it.id == vm.paidBy }?.name ?: stringResource(R.string.choose)
 
     Column(
         modifier = modifier
@@ -213,8 +218,8 @@ private fun FormBody(vm: ExpenseFormViewModel, group: Group, modifier: Modifier,
         OutlinedTextField(
             value = vm.title,
             onValueChange = { if (it.length <= 200) vm.title = it },
-            label = { Text("Descrizione") },
-            placeholder = { Text("Es. cena in pizzeria") },
+            label = { Text(stringResource(R.string.expense_title_label)) },
+            placeholder = { Text(stringResource(R.string.expense_title_hint)) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
             modifier = Modifier.fillMaxWidth(),
@@ -233,13 +238,13 @@ private fun FormBody(vm: ExpenseFormViewModel, group: Group, modifier: Modifier,
             )
             AssistChip(
                 onClick = { onPick(Picker.Category) },
-                label = { Text("${category.emoji}  ${category.name}") },
+                label = { Text("${category.emoji}  ${stringResource(category.name)}") },
             )
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FieldButton("Pagato da", payer, onClick = { onPick(Picker.PaidBy) }, modifier = Modifier.weight(1f))
-            FieldButton("Si ripete", vm.recurrence.label, onClick = { onPick(Picker.Recurrence) }, modifier = Modifier.weight(1f))
+            FieldButton(stringResource(R.string.paid_by), payer, onClick = { onPick(Picker.PaidBy) }, modifier = Modifier.weight(1f))
+            FieldButton(stringResource(R.string.repeats), stringResource(vm.recurrence.label), onClick = { onPick(Picker.Recurrence) }, modifier = Modifier.weight(1f))
         }
 
         Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
@@ -248,9 +253,9 @@ private fun FormBody(vm: ExpenseFormViewModel, group: Group, modifier: Modifier,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("È un rimborso", style = MaterialTheme.typography.bodyLarge)
+                    Text(stringResource(R.string.is_reimbursement), style = MaterialTheme.typography.bodyLarge)
                     Text(
-                        "Soldi restituiti, non una nuova spesa",
+                        stringResource(R.string.is_reimbursement_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -264,14 +269,14 @@ private fun FormBody(vm: ExpenseFormViewModel, group: Group, modifier: Modifier,
         OutlinedTextField(
             value = vm.notes,
             onValueChange = { if (it.length <= 5000) vm.notes = it },
-            label = { Text("Note (facoltative)") },
+            label = { Text(stringResource(R.string.notes_optional)) },
             minLines = 2,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
             modifier = Modifier.fillMaxWidth(),
         )
 
         if (vm.documents.isNotEmpty()) {
-            Text("Ricevute allegate", style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.receipts), style = MaterialTheme.typography.titleSmall)
             vm.documents.forEachIndexed { i, d ->
                 TextButton(
                     onClick = {
@@ -283,17 +288,17 @@ private fun FormBody(vm: ExpenseFormViewModel, group: Group, modifier: Modifier,
                             }
                         }
                     },
-                ) { Text("Apri ricevuta ${i + 1}") }
+                ) { Text(stringResource(R.string.open_receipt, i + 1)) }
             }
             Text(
-                "Per aggiungere o togliere ricevute usa la versione web.",
+                stringResource(R.string.receipts_web_only),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
-        if (vm.error != null) {
-            Text(vm.error ?: "", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+        vm.error?.let {
+            Text(it.asString(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
         }
         Spacer(Modifier.height(24.dp))
     }
@@ -307,7 +312,7 @@ private fun AmountSection(vm: ExpenseFormViewModel, group: Group, onPickCurrency
             OutlinedTextField(
                 value = vm.amountText,
                 onValueChange = { if (it.length <= 16) vm.updateAmount(it) },
-                label = { Text("Importo") },
+                label = { Text(stringResource(R.string.amount)) },
                 prefix = { Text(group.currency + " ") },
                 singleLine = true,
                 textStyle = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
@@ -318,7 +323,7 @@ private fun AmountSection(vm: ExpenseFormViewModel, group: Group, onPickCurrency
             OutlinedTextField(
                 value = vm.originalAmountText,
                 onValueChange = { if (it.length <= 16) vm.updateOriginalAmount(it) },
-                label = { Text("Quanto hai pagato") },
+                label = { Text(stringResource(R.string.amount_paid)) },
                 prefix = { Text(vm.originalCurrency + " ") },
                 singleLine = true,
                 textStyle = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
@@ -327,7 +332,7 @@ private fun AmountSection(vm: ExpenseFormViewModel, group: Group, onPickCurrency
             )
             Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Nel gruppo diventa", style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.converted_amount), style = MaterialTheme.typography.labelLarge)
                     val groupMinor = Money.parse(vm.amountText, group.currencyCode)
                     Text(
                         if (groupMinor == null) "—" else Money.format(groupMinor, group),
@@ -347,12 +352,12 @@ private fun AmountSection(vm: ExpenseFormViewModel, group: Group, onPickCurrency
                             LoadingIndicator(Modifier.padding(start = 8.dp).size(40.dp))
                         } else {
                             IconButton(onClick = vm::refreshRate) {
-                                Icon(Icons.Filled.Refresh, contentDescription = "Aggiorna il tasso di cambio")
+                                Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.refresh_rate))
                             }
                         }
                     }
                     vm.rateInfo?.let {
-                        Text(it, style = MaterialTheme.typography.bodySmall)
+                        Text(it.asString(), style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
@@ -366,7 +371,7 @@ private fun AmountSection(vm: ExpenseFormViewModel, group: Group, onPickCurrency
                 FilterChip(
                     selected = vm.convert,
                     onClick = { vm.switchConversion(!vm.convert) },
-                    label = { Text("Pagato in un'altra valuta") },
+                    label = { Text(stringResource(R.string.paid_other_currency)) },
                     leadingIcon = if (vm.convert) {
                         { Icon(Icons.Filled.Check, contentDescription = null) }
                     } else null,
@@ -384,19 +389,13 @@ private fun SplitSection(vm: ExpenseFormViewModel, group: Group) {
     val code = group.currencyCode
     val preview = vm.preview()
     val modes = SplitMode.entries
-    val shortLabels = mapOf(
-        SplitMode.EVENLY to "Uguale",
-        SplitMode.BY_SHARES to "Quote",
-        SplitMode.BY_PERCENTAGE to "%",
-        SplitMode.BY_AMOUNT to "Importi",
-    )
     val allSelected = group.participants.all { vm.selected[it.id] == true }
 
     Surface(shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surfaceContainerLow) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Per chi", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                TextButton(onClick = { vm.setAll(!allSelected) }) { Text(if (allSelected) "Nessuno" else "Tutti") }
+                Text(stringResource(R.string.for_whom), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                TextButton(onClick = { vm.setAll(!allSelected) }) { Text(stringResource(if (allSelected) R.string.select_none else R.string.select_all)) }
             }
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 modes.forEachIndexed { i, mode ->
@@ -404,12 +403,12 @@ private fun SplitSection(vm: ExpenseFormViewModel, group: Group) {
                         selected = vm.splitMode == mode,
                         onClick = { vm.changeMode(mode) },
                         shape = SegmentedButtonDefaults.itemShape(index = i, count = modes.size),
-                        label = { Text(shortLabels[mode] ?: mode.label, maxLines = 1) },
+                        label = { Text(stringResource(mode.shortLabel), maxLines = 1) },
                     )
                 }
             }
             Text(
-                vm.splitMode.label,
+                stringResource(vm.splitMode.label),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -455,11 +454,11 @@ private fun SplitSection(vm: ExpenseFormViewModel, group: Group) {
                 val (text, ok) = when (vm.splitMode) {
                     SplitMode.BY_PERCENTAGE -> {
                         val pct = Money.plainNumber(java.math.BigDecimal.valueOf(allocated).movePointLeft(2))
-                        "Totale: $pct% su 100%" to (allocated == 10_000L)
+                        stringResource(R.string.percent_total, pct) to (allocated == 10_000L)
                     }
                     else -> {
                         val total = Money.parse(vm.amountText, code) ?: 0L
-                        "Assegnati ${Money.format(allocated, group)} su ${Money.format(total, group)}" to (allocated == total)
+                        stringResource(R.string.amount_allocated, Money.format(allocated, group), Money.format(total, group)) to (allocated == total)
                     }
                 }
                 Text(
@@ -481,9 +480,9 @@ private fun DateDialog(current: LocalDate, onDismiss: () -> Unit, onPicked: (Loc
             TextButton(onClick = {
                 val millis = state.selectedDateMillis
                 if (millis != null) onPicked(LocalDate.ofEpochDay(Math.floorDiv(millis, DAY_MS))) else onDismiss()
-            }) { Text("OK") }
+            }) { Text(stringResource(R.string.action_ok)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     ) {
         DatePicker(state = state)
     }
@@ -491,11 +490,12 @@ private fun DateDialog(current: LocalDate, onDismiss: () -> Unit, onPicked: (Loc
 
 private const val DAY_MS = 86_400_000L
 
+@Composable
 private fun formatDate(date: LocalDate): String {
     val today = LocalDate.now()
     return when (date) {
-        today -> "Oggi"
-        today.minusDays(1) -> "Ieri"
+        today -> stringResource(R.string.today)
+        today.minusDays(1) -> stringResource(R.string.yesterday)
         else -> date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
     }
 }

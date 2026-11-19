@@ -89,7 +89,7 @@ class ExchangeRates(context: Context) {
             val rate = (obj["rate"] as? JsonPrimitive)?.doubleOrNull ?: continue
             if (!isUsable(rate)) continue
             val rateDay = (obj["date"] as? JsonPrimitive)?.contentOrNull ?: day.toString()
-            return RateQuote(rate, rateDay, "BCE", now)
+            return RateQuote(rate, rateDay, "ecb", now)
         }
         return null
     }
